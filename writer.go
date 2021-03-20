@@ -15,7 +15,7 @@ import (
 // A Writer writes records using CSV encoding.
 //
 // As returned by NewWriter, a Writer writes records terminated by a
-// newline and uses ',' as the field delimiter. The exported fields can be
+// newline and uses ',' by default as the field delimiter. The exported fields can be
 // changed to customize the details before the first call to Write or WriteAll.
 //
 // The writes of individual records are buffered.
@@ -25,12 +25,19 @@ import (
 // be checked by calling the Error method.
 type Writer struct {
 	w *bufio.Writer
+	delimiter rune
 }
 
 // NewWriter returns a new Writer that writes to w.
 func NewWriter(w io.Writer, bufferSize int) *Writer {
+	return NewWriterWithDelimiter(w, bufferSize, ',')
+}
+
+// NewWriter returns a new Writer that writes to w with fields delimited by delimiter.
+func NewWriterWithDelimiter(w io.Writer, bufferSize int, delimiter rune) *Writer {
 	return &Writer{
 		w: bufio.NewWriterSize(w, bufferSize),
+		delimiter: delimiter,
 	}
 }
 
@@ -42,7 +49,7 @@ func (w *Writer) Write(record [][]byte) error {
 
 	for n, field := range record {
 		if n > 0 {
-			if err := w.w.WriteByte(','); err != nil {
+			if _, err := w.w.WriteRune(w.delimiter); err != nil {
 				return err
 			}
 		}
@@ -123,7 +130,7 @@ func (w *Writer) fieldNeedsQuotes(field []byte) bool {
 	}
 
 	for _, c := range field {
-		if special[c] == 1 {
+		if special[c] == 1 || c == byte(w.delimiter) {
 			return true
 		}
 	}
@@ -151,4 +158,4 @@ func (w *Writer) fieldNeedsQuotes(field []byte) bool {
 }
 
 var asciiSpace = [256]uint8{'\t': 1, '\n': 1, '\v': 1, '\f': 1, '\r': 1, ' ': 1}
-var special = [256]uint8{',': 1, '"': 1, '\r': 1, '\n': 1}
+var special = [256]uint8{'"': 1, '\r': 1, '\n': 1}
