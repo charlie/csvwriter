@@ -24,7 +24,7 @@ import (
 // the underlying io.Writer.  Any errors that occurred should
 // be checked by calling the Error method.
 type Writer struct {
-	w *bufio.Writer
+	w         *bufio.Writer
 	delimiter rune
 }
 
@@ -36,7 +36,7 @@ func NewWriter(w io.Writer, bufferSize int) *Writer {
 // NewWriter returns a new Writer that writes to w with fields delimited by delimiter.
 func NewWriterWithDelimiter(w io.Writer, bufferSize int, delimiter rune) *Writer {
 	return &Writer{
-		w: bufio.NewWriterSize(w, bufferSize),
+		w:         bufio.NewWriterSize(w, bufferSize),
 		delimiter: delimiter,
 	}
 }
@@ -57,7 +57,7 @@ func (w *Writer) Write(record [][]byte) error {
 		// If we don't have to have a quoted field then just
 		// write out the field and continue to the next field.
 		if !w.fieldNeedsQuotes(field) {
-			if _, err := w.w.Write(field); err != nil {
+			if _, err := w.w.Write(w.encode(field)); err != nil {
 				return err
 			}
 			continue
@@ -103,6 +103,13 @@ func (w *Writer) Write(record [][]byte) error {
 	var err error
 	err = w.w.WriteByte('\n')
 	return err
+}
+
+func (w *Writer) encode(field []byte) []byte {
+	if len(field) == 0 && w.delimiter == '\t' {
+		return []byte{'\\', 'N'}
+	}
+	return field
 }
 
 // Flush writes any buffered data to the underlying io.Writer.
